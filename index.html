@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Survivor Pool — March Madness 2026</title>
+<title>World Cup 2026 Survivor Pool</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -229,156 +229,137 @@ firebase.initializeApp({
 const db = firebase.database();
 
 // ─── Tournament Data ─────────────────────────────────────────────────────────
-const FF_DEFAULTS = {
-  "UMBC/Howard": "Howard",
-  "NC State/Texas": "Texas",
-  "SMU/Miami (OH)": "TBD",
-  "Prairie View A&M/Lehigh": "TBD"
+// Group stage slot defaults — updated via Firebase wc26/slots as group stage finishes
+const SLOT_DEFAULTS = {
+  "1A":"Mexico",    "2A":"South Africa",
+  "1B":"Switzerland","2B":"Canada",
+  "1C":"Brazil",    "2C":"Morocco",
+  "1D":"USA",       "2D":"TBD",
+  "1E":"Germany",   "2E":"TBD",
+  "1F":"TBD",       "2F":"TBD",
+  "1G":"TBD",       "2G":"TBD",
+  "1H":"TBD",       "2H":"TBD",
+  "1I":"TBD",       "2I":"TBD",
+  "1J":"Argentina", "2J":"TBD",
+  "1K":"TBD",       "2K":"TBD",
+  "1L":"TBD",       "2L":"TBD",
+  "3rd1":"TBD","3rd2":"TBD","3rd3":"TBD","3rd4":"TBD",
+  "3rd5":"TBD","3rd6":"TBD","3rd7":"TBD","3rd8":"TBD",
 };
 
+// 8 pick windows — each covers a 2-day (or 3-day) block of games
+// R32 games: $SLOT:KEY resolves once group stage ends
 const DAYS = [
-  { id:"thu-r1", label:"Thu 3/19", date:"2026-03-19", round:"Round 1", games:[
-    {h:{s:8,n:"Ohio State"},l:{s:9,n:"TCU"},t:"12:15p",r:"East"},
-    {h:{s:4,n:"Nebraska"},l:{s:13,n:"Troy"},t:"12:40p",r:"South"},
-    {h:{s:6,n:"Louisville"},l:{s:11,n:"South Florida"},t:"1:30p",r:"East"},
-    {h:{s:5,n:"Wisconsin"},l:{s:12,n:"High Point"},t:"1:50p",r:"West"},
-    {h:{s:1,n:"Duke"},l:{s:16,n:"Siena"},t:"2:50p",r:"East"},
-    {h:{s:5,n:"Vanderbilt"},l:{s:12,n:"McNeese"},t:"3:15p",r:"South"},
-    {h:{s:3,n:"Michigan State"},l:{s:14,n:"North Dakota St"},t:"4:05p",r:"East"},
-    {h:{s:4,n:"Arkansas"},l:{s:13,n:"Hawaii"},t:"4:25p",r:"West"},
-    {h:{s:6,n:"North Carolina"},l:{s:11,n:"VCU"},t:"6:50p",r:"South"},
-    {h:{s:1,n:"Michigan"},l:{s:16,n:"Howard"},t:"7:10p",r:"Midwest"},
-    {h:{s:6,n:"BYU"},l:{s:11,n:"Texas"},t:"7:25p",r:"West"},
-    {h:{s:7,n:"Saint Mary's"},l:{s:10,n:"Texas A&M"},t:"7:35p",r:"South"},
-    {h:{s:3,n:"Illinois"},l:{s:14,n:"Penn"},t:"9:25p",r:"South"},
-    {h:{s:8,n:"Georgia"},l:{s:9,n:"Saint Louis"},t:"9:45p",r:"Midwest"},
-    {h:{s:3,n:"Gonzaga"},l:{s:14,n:"Kennesaw St"},t:"10:00p",r:"West"},
-    {h:{s:2,n:"Houston"},l:{s:15,n:"Idaho"},t:"10:10p",r:"South"},
+  { id:"r32-w1", label:"Jun 28\u201329", dates:["2026-06-28","2026-06-29"], round:"Round of 32", games:[
+    {h:{n:"South Africa"},  l:{n:"Canada"},         t:"3:00p", r:"Jun 28"},
+    {h:{n:"Brazil"},        l:{n:"$SLOT:2F"},        t:"1:00p", r:"Jun 29"},
+    {h:{n:"Germany"},       l:{n:"$SLOT:3rd1"},      t:"4:30p", r:"Jun 29"},
+    {h:{n:"$SLOT:1F"},      l:{n:"Morocco"},         t:"9:00p", r:"Jun 29"},
   ]},
-  { id:"fri-r1", label:"Fri 3/20", date:"2026-03-20", round:"Round 1", games:[
-    {h:{s:7,n:"Kentucky"},l:{s:10,n:"Santa Clara"},t:"12:15p",r:"Midwest"},
-    {h:{s:5,n:"Texas Tech"},l:{s:12,n:"Akron"},t:"12:40p",r:"Midwest"},
-    {h:{s:1,n:"Arizona"},l:{s:16,n:"LIU"},t:"1:35p",r:"West"},
-    {h:{s:3,n:"Virginia"},l:{s:14,n:"Wright State"},t:"1:50p",r:"Midwest"},
-    {h:{s:2,n:"Iowa State"},l:{s:15,n:"Tennessee St"},t:"2:50p",r:"Midwest"},
-    {h:{s:4,n:"Alabama"},l:{s:13,n:"Hofstra"},t:"3:15p",r:"Midwest"},
-    {h:{s:8,n:"Villanova"},l:{s:9,n:"Utah State"},t:"4:10p",r:"West"},
-    {h:{s:6,n:"Tennessee"},l:{s:11,n:"$FF:SMU/Miami (OH)"},t:"4:25p",r:"Midwest"},
-    {h:{s:8,n:"Clemson"},l:{s:9,n:"Iowa"},t:"6:50p",r:"South"},
-    {h:{s:5,n:"St John's"},l:{s:12,n:"UNI"},t:"7:10p",r:"East"},
-    {h:{s:7,n:"UCLA"},l:{s:10,n:"UCF"},t:"7:25p",r:"East"},
-    {h:{s:2,n:"Purdue"},l:{s:15,n:"Queens"},t:"7:35p",r:"West"},
-    {h:{s:1,n:"Florida"},l:{s:16,n:"$FF:Prairie View A&M/Lehigh"},t:"9:25p",r:"South"},
-    {h:{s:4,n:"Kansas"},l:{s:13,n:"Cal Baptist"},t:"9:45p",r:"East"},
-    {h:{s:2,n:"UConn"},l:{s:15,n:"Furman"},t:"10:00p",r:"East"},
-    {h:{s:7,n:"Miami (FL)"},l:{s:10,n:"Missouri"},t:"10:10p",r:"West"},
+  { id:"r32-w2", label:"Jun 30\u2013Jul 1", dates:["2026-06-30","2026-07-01"], round:"Round of 32", games:[
+    {h:{n:"$SLOT:2E"},      l:{n:"$SLOT:2I"},        t:"1:00p", r:"Jun 30"},
+    {h:{n:"$SLOT:1I"},      l:{n:"$SLOT:3rd2"},      t:"5:00p", r:"Jun 30"},
+    {h:{n:"Mexico"},        l:{n:"$SLOT:3rd3"},      t:"9:00p", r:"Jun 30"},
+    {h:{n:"$SLOT:1L"},      l:{n:"$SLOT:3rd4"},      t:"12:00p",r:"Jul 1"},
+    {h:{n:"$SLOT:1G"},      l:{n:"$SLOT:3rd5"},      t:"4:00p", r:"Jul 1"},
+    {h:{n:"USA"},           l:{n:"$SLOT:3rd6"},      t:"8:00p", r:"Jul 1"},
   ]},
-  { id:"sat-r2", label:"Sat 3/21", date:"2026-03-21", round:"Round 2", games:[] },
-  { id:"sun-r2", label:"Sun 3/22", date:"2026-03-22", round:"Round 2", games:[] },
-  { id:"thu-s16", label:"Thu 3/26", date:"2026-03-26", round:"Sweet 16", games:[] },
-  { id:"fri-s16", label:"Fri 3/27", date:"2026-03-27", round:"Sweet 16", games:[] },
-  { id:"sat-e8", label:"Sat 3/28", date:"2026-03-28", round:"Elite 8", games:[] },
-  { id:"sun-e8", label:"Sun 3/29", date:"2026-03-29", round:"Elite 8", games:[] },
-  { id:"sat-ff", label:"Sat 4/4", date:"2026-04-04", round:"Final Four", games:[] },
-  { id:"mon-ch", label:"Mon 4/6", date:"2026-04-06", round:"Title Game", games:[] },
+  { id:"r32-w3", label:"Jul 2\u20133", dates:["2026-07-02","2026-07-03"], round:"Round of 32", games:[
+    {h:{n:"$SLOT:1H"},      l:{n:"$SLOT:2J"},        t:"3:00p", r:"Jul 2"},
+    {h:{n:"$SLOT:2K"},      l:{n:"$SLOT:2L"},        t:"7:00p", r:"Jul 2"},
+    {h:{n:"Switzerland"},   l:{n:"$SLOT:3rd7"},      t:"11:00p",r:"Jul 2"},
+    {h:{n:"$SLOT:2D"},      l:{n:"$SLOT:2G"},        t:"2:00p", r:"Jul 3"},
+    {h:{n:"Argentina"},     l:{n:"$SLOT:2H"},        t:"6:00p", r:"Jul 3"},
+    {h:{n:"$SLOT:1K"},      l:{n:"$SLOT:3rd8"},      t:"8:30p", r:"Jul 3"},
+  ]},
+  { id:"r16-w1", label:"Jul 4\u20135",   dates:["2026-07-04","2026-07-05"], round:"Round of 16", games:[] },
+  { id:"r16-w2", label:"Jul 6\u20137",   dates:["2026-07-06","2026-07-07"], round:"Round of 16", games:[] },
+  { id:"qf",     label:"Jul 9\u201311",  dates:["2026-07-09","2026-07-10","2026-07-11"], round:"Quarterfinal", games:[] },
+  { id:"sf",     label:"Jul 14\u201315", dates:["2026-07-14","2026-07-15"], round:"Semifinal", games:[] },
+  { id:"final",  label:"Jul 19",         dates:["2026-07-19"], round:"Final", games:[] },
 ];
 
-const R2_SAT = [
-  {a:["Duke","Siena"],b:["Ohio State","TCU"],r:"East"},
-  {a:["Louisville","South Florida"],b:["Michigan State","North Dakota St"],r:"East"},
-  {a:["Nebraska","Troy"],b:["Vanderbilt","McNeese"],r:"South"},
-  {a:["North Carolina","VCU"],b:["Illinois","Penn"],r:"South"},
-  {a:["Wisconsin","High Point"],b:["Arkansas","Hawaii"],r:"West"},
-  {a:["BYU","Texas"],b:["Gonzaga","Kennesaw St"],r:"West"},
-  {a:["Michigan","Howard"],b:["Georgia","Saint Louis"],r:"Midwest"},
-  {a:["Saint Mary's","Texas A&M"],b:["Houston","Idaho"],r:"South"},
-];
-const R2_SUN = [
-  {a:["Kentucky","Santa Clara"],b:["Iowa State","Tennessee St"],r:"Midwest"},
-  {a:["Texas Tech","Akron"],b:["Alabama","Hofstra"],r:"Midwest"},
-  {a:["Tennessee","$FF:SMU/Miami (OH)"],b:["Virginia","Wright State"],r:"Midwest"},
-  {a:["St John's","UNI"],b:["Kansas","Cal Baptist"],r:"East"},
-  {a:["UCLA","UCF"],b:["UConn","Furman"],r:"East"},
-  {a:["Arizona","LIU"],b:["Villanova","Utah State"],r:"West"},
-  {a:["Miami (FL)","Missouri"],b:["Purdue","Queens"],r:"West"},
-  {a:["Clemson","Iowa"],b:["Florida","$FF:Prairie View A&M/Lehigh"],r:"South"},
-];
-
-const S16_THU = [
-  {a:R2_SUN[7],b:R2_SAT[2],r:"South"},   // (1/8) vs (4/5)
-  {a:R2_SAT[3],b:R2_SAT[7],r:"South"},   // (3/6) vs (2/7)
-  {a:R2_SUN[5],b:R2_SAT[4],r:"West"},    // (1/8) vs (4/5)
-  {a:R2_SAT[5],b:R2_SUN[6],r:"West"},    // (3/6) vs (2/7)
-];
-const S16_FRI = [
-  {a:R2_SAT[6],b:R2_SUN[1],r:"Midwest"}, // (1/8) vs (4/5)
-  {a:R2_SUN[2],b:R2_SUN[0],r:"Midwest"}, // (3/6) vs (2/7)
-  {a:R2_SAT[0],b:R2_SUN[3],r:"East"},    // (1/8) vs (4/5)
-  {a:R2_SAT[1],b:R2_SUN[4],r:"East"},    // (3/6) vs (2/7)
-];
-
-const REGION_COLORS = { East:"var(--east)", West:"var(--west)", Midwest:"var(--midwest)", South:"var(--south)" };
-const DAY_DATE = {}; DAYS.forEach(d => DAY_DATE[d.id] = d.date);
+// All dates per window (for score fetching and result lookup)
+const DAY_DATES = {};
+DAYS.forEach(d => DAY_DATES[d.id] = d.dates);
 
 const ALIASES = {
-  "michigan st.":"Michigan State","michigan st":"Michigan State","michigan state":"Michigan State",
-  "north dakota st.":"North Dakota St","n. dakota st.":"North Dakota St","north dakota state":"North Dakota St",
-  "kennesaw st.":"Kennesaw St","kennesaw state":"Kennesaw St",
-  "tennessee st.":"Tennessee St","tennessee state":"Tennessee St",
-  "ohio st.":"Ohio State","ohio state":"Ohio State",
-  "iowa st.":"Iowa State","iowa state":"Iowa State",
-  "utah st.":"Utah State","utah state":"Utah State",
-  "cal baptist":"Cal Baptist","california baptist":"Cal Baptist","cal. baptist":"Cal Baptist",
-  "st. john's":"St John's","saint john's":"St John's","st john's":"St John's",
-  "saint mary's":"Saint Mary's","st. mary's":"Saint Mary's",
-  "saint louis":"Saint Louis","st. louis":"Saint Louis",
-  "south fla.":"South Florida","usf":"South Florida","south florida":"South Florida",
-  "n. carolina":"North Carolina","unc":"North Carolina","north carolina":"North Carolina",
-  "miami (fl)":"Miami (FL)","miami (fla.)":"Miami (FL)",
-  "miami (oh)":"Miami (OH)","miami ohio":"Miami (OH)",
-  "liu":"LIU","long island":"LIU","long island university":"LIU",
-  "prairie view":"Prairie View A&M","prairie view a&m":"Prairie View A&M","pvamu":"Prairie View A&M",
-  "n.c. state":"NC State","nc state":"NC State",
-  "wright st.":"Wright State","wright state":"Wright State",
-  "texas a&m":"Texas A&M",
-  "mcneese":"McNeese","mcneese st.":"McNeese","mcneese state":"McNeese",
-  "northern iowa":"UNI","uni":"UNI","n. iowa":"UNI",
-  "queens":"Queens","queens (nc)":"Queens",
-  "high point":"High Point",
-  "hawai'i":"Hawaii","hawaii":"Hawaii","hawai\u2018i":"Hawaii","hawai&#699;i":"Hawaii",
-  "byu":"BYU","ucf":"UCF","vcu":"VCU","smu":"SMU","umbc":"UMBC",
-  "texas a&m":"Texas A&M","tcu":"TCU","lsu":"LSU","usc":"USC",
-  "north dakota state":"North Dakota St","san diego state":"San Diego State",
-  "florida atlantic":"Florida Atlantic","fau":"Florida Atlantic",
-  "grand canyon":"Grand Canyon","uc irvine":"UC Irvine","uc davis":"UC Davis",
-  "unc wilmington":"UNC Wilmington","unc asheville":"UNC Asheville",
+  "united states":"USA","u.s.":"USA","u.s.a.":"USA","us":"USA",
+  "south africa":"South Africa",
+  "switzerland":"Switzerland",
+  "brazil":"Brazil","brasil":"Brazil",
+  "morocco":"Morocco","maroc":"Morocco",
+  "germany":"Germany","deutschland":"Germany",
+  "mexico":"Mexico","méxico":"Mexico",
+  "argentina":"Argentina",
+  "canada":"Canada",
+  "france":"France",
+  "norway":"Norway","norge":"Norway",
+  "colombia":"Colombia",
+  "portugal":"Portugal",
+  "netherlands":"Netherlands","holland":"Netherlands","ned":"Netherlands",
+  "japan":"Japan","jpn":"Japan",
+  "spain":"Spain","españa":"Spain","esp":"Spain",
+  "england":"England","eng":"England",
+  "croatia":"Croatia","cro":"Croatia",
+  "uruguay":"Uruguay","uru":"Uruguay",
+  "senegal":"Senegal","sen":"Senegal",
+  "ecuador":"Ecuador","ecu":"Ecuador",
+  "ghana":"Ghana","gha":"Ghana",
+  "australia":"Australia","aus":"Australia",
+  "south korea":"South Korea","korea republic":"South Korea","republic of korea":"South Korea","kor":"South Korea",
+  "ivory coast":"Ivory Coast","côte d'ivoire":"Ivory Coast","cote d'ivoire":"Ivory Coast","civ":"Ivory Coast",
+  "iran":"Iran","ir iran":"Iran","iri":"Iran",
+  "egypt":"Egypt","egy":"Egypt",
+  "belgium":"Belgium","bel":"Belgium",
+  "austria":"Austria","aut":"Austria",
+  "paraguay":"Paraguay","par":"Paraguay",
+  "peru":"Peru","per":"Peru",
+  "poland":"Poland","pol":"Poland",
+  "ukraine":"Ukraine","ukr":"Ukraine",
+  "turkey":"Turkey","türkiye":"Turkey","tur":"Turkey",
+  "serbia":"Serbia","srb":"Serbia",
+  "nigeria":"Nigeria","nga":"Nigeria",
+  "cameroon":"Cameroon","cmr":"Cameroon",
+  "indonesia":"Indonesia","idn":"Indonesia",
+  "venezuela":"Venezuela","ven":"Venezuela",
+  "panama":"Panama","pan":"Panama",
+  "jamaica":"Jamaica","jam":"Jamaica",
+  "new zealand":"New Zealand","nzl":"New Zealand",
+  "saudi arabia":"Saudi Arabia","ksa":"Saudi Arabia","ksa ":"Saudi Arabia",
+  "united arab emirates":"UAE","uae":"UAE",
+  "algeria":"Algeria","alg":"Algeria",
+  "tunisia":"Tunisia","tun":"Tunisia",
+  "mali":"Mali","mli":"Mali",
+  "dr congo":"DR Congo","congo dr":"DR Congo","democratic republic of congo":"DR Congo",
+  "costa rica":"Costa Rica","crc":"Costa Rica",
+  "honduras":"Honduras","hon":"Honduras",
+  "cuba":"Cuba","cub":"Cuba",
 };
 
-// Collect all team names
-const ALL_TEAMS = new Set();
+// Collect all known team names (from defaults + hardcoded games)
+const ALL_TEAMS = new Set(Object.values(SLOT_DEFAULTS).filter(v => v !== "TBD"));
 DAYS.forEach(d => d.games.forEach(g => {
-  [g.h.n, g.l.n].forEach(n => { if (n && !n.startsWith("$")) ALL_TEAMS.add(n); });
+  [g.h.n, g.l.n].forEach(n => { if (n && !n.startsWith("$") && n !== "TBD") ALL_TEAMS.add(n); });
 }));
-Object.keys(FF_DEFAULTS).forEach(k => k.split("/").forEach(t => ALL_TEAMS.add(t)));
-[...R2_SAT, ...R2_SUN].forEach(p => [...p.a,...p.b].forEach(t => { if (!t.startsWith("$")) ALL_TEAMS.add(t); }));
-const TEAM_LIST = [...ALL_TEAMS];
+let TEAM_LIST = [...ALL_TEAMS];
 
 function matchTeam(api) {
   if (!api) return null;
   const n = api.toLowerCase().trim();
+  if (ALIASES[n]) return ALIASES[n];
   const exact = TEAM_LIST.find(t => t.toLowerCase() === n);
   if (exact) return exact;
-  if (ALIASES[n]) return ALIASES[n];
   return TEAM_LIST.find(t => n.includes(t.toLowerCase()) || t.toLowerCase().includes(n)) || null;
 }
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let state = {
-  player: localStorage.getItem("survivor-player") || "",
+  player: localStorage.getItem("wc26-player") || "",
   players: [],
   picks: {},
   results: {},
-  ff: { ...FF_DEFAULTS },
+  slots: { ...SLOT_DEFAULTS },
   dayIdx: 0,
   board: false,
   fetchTime: null,
@@ -387,28 +368,31 @@ let state = {
 };
 
 // ─── Firebase listeners ──────────────────────────────────────────────────────
-db.ref("players").on("value", snap => {
+db.ref("wc26/players").on("value", snap => {
   state.players = snap.val() || [];
   render();
 });
-db.ref("picks").on("value", snap => {
+db.ref("wc26/picks").on("value", snap => {
   state.picks = snap.val() || {};
   render();
 });
-db.ref("results").on("value", snap => {
+db.ref("wc26/results").on("value", snap => {
   state.results = snap.val() || {};
   render();
 });
-db.ref("ff").on("value", snap => {
-  state.ff = { ...FF_DEFAULTS, ...(snap.val() || {}) };
+db.ref("wc26/slots").on("value", snap => {
+  state.slots = { ...SLOT_DEFAULTS, ...(snap.val() || {}) };
+  // Rebuild TEAM_LIST with any newly resolved slot values
+  const extra = Object.values(state.slots).filter(v => v && v !== "TBD");
+  TEAM_LIST = [...new Set([...ALL_TEAMS, ...extra])];
   render();
 });
 
 // Mark loading done after first data load
-db.ref("players").once("value", () => {
+db.ref("wc26/players").once("value", () => {
   state.loading = false;
   const today = new Date().toISOString().slice(0,10);
-  let i = DAYS.findIndex(d => d.date >= today);
+  let i = DAYS.findIndex(d => d.dates[0] >= today);
   state.dayIdx = i >= 0 ? i : DAYS.length - 1;
   render();
   fetchScores();
@@ -419,35 +403,35 @@ function joinPool(name) {
   name = name.trim();
   if (!name) return;
   state.player = name;
-  localStorage.setItem("survivor-player", name);
+  localStorage.setItem("wc26-player", name);
   if (!state.players.includes(name)) {
     const np = [...state.players, name];
-    db.ref("players").set(np);
+    db.ref("wc26/players").set(np);
   }
   render();
 }
 
 function makePick(team, dayId) {
   if (!state.player || team === "TBD") return;
-  db.ref("picks/" + state.player + "/" + dayId).set(team);
+  db.ref("wc26/picks/" + state.player + "/" + dayId).set(team);
 }
 
 function clearPick(dayId) {
   if (!state.player) return;
-  db.ref("picks/" + state.player + "/" + dayId).remove();
+  db.ref("wc26/picks/" + state.player + "/" + dayId).remove();
 }
 
 function logout() {
   state.player = "";
-  localStorage.removeItem("survivor-player");
+  localStorage.removeItem("wc26-player");
   render();
 }
 
 function removePlayer(name) {
   if (!confirm("Remove " + name + " from the pool? This deletes all their picks.")) return;
   const np = state.players.filter(p => p !== name);
-  db.ref("players").set(np);
-  db.ref("picks/" + name).remove();
+  db.ref("wc26/players").set(np);
+  db.ref("wc26/picks/" + name).remove();
   if (state.player === name) logout();
 }
 
@@ -458,44 +442,37 @@ async function fetchScores() {
   try {
   const today = new Date().toISOString().slice(0,10);
   log("today=" + today);
-  const dates = [...new Set(DAYS.filter(d => d.date <= today).map(d => d.date))];
+  // Collect all individual dates from windows that have started
+  const dates = [...new Set(
+    DAYS.filter(d => d.dates[0] <= today)
+        .flatMap(d => d.dates)
+        .filter(d => d <= today)
+  )];
   log("dates=" + dates.join(","));
 
   let changed = false;
   const nr = { ...state.results };
-  const nf = { ...state.ff };
 
   function recordResult(wn, ln, date) {
     const mw = matchTeam(wn), ml = matchTeam(ln);
     if (!nr[date]) nr[date] = {};
     if (mw && nr[date][mw] !== "won") { nr[date][mw] = "won"; changed = true; log("W " + mw + " @" + date); }
     if (ml && nr[date][ml] !== "lost") { nr[date][ml] = "lost"; changed = true; log("L " + ml + " @" + date); }
-    for (const [key,val] of Object.entries(nf)) {
-      if (val === "TBD" && mw && key.split("/").includes(mw)) { nf[key] = mw; changed = true; }
-    }
     return mw || ml ? 1 : 0;
   }
 
-  // Try ESPN and ncaa-api in parallel for maximum reliability
-  const ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard";
-  const NCAA = "https://ncaa-api.henrygd.me/scoreboard/basketball-men/d1";
+  // ESPN soccer World Cup scoreboard
+  const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard";
 
   // Build all fetch promises — each catches its own errors
   const espnFetches = dates.map(dt =>
-    fetch(ESPN + "?dates=" + dt.replace(/-/g, "") + "&limit=200")
+    fetch(ESPN + "?dates=" + dt.replace(/-/g, "") + "&limit=50")
       .then(r => { log("espn " + dt + " http" + r.status); return r.ok ? r.json() : null; })
       .catch(e => { log("espn " + dt + " ERR:" + e.message); return null; })
   );
-  const ncaaFetches = dates.map(dt =>
-    fetch(NCAA + "/" + dt.replace(/-/g, "/"))
-      .then(r => { log("ncaa " + dt + " http" + r.status); return r.ok ? r.json() : null; })
-      .catch(e => { log("ncaa " + dt + " ERR:" + e.message); return null; })
-  );
 
   // Fire all fetches in parallel
-  const allResults = await Promise.all([...espnFetches, ...ncaaFetches]);
-  const espnResults = allResults.slice(0, dates.length);
-  const ncaaResults = allResults.slice(dates.length);
+  const espnResults = await Promise.all(espnFetches);
   log("fetches done");
 
   // Process ESPN results
@@ -513,30 +490,15 @@ async function fetchScores() {
       const winner = teams.find(t => t.winner);
       const loser = teams.find(t => !t.winner);
       if (!winner || !loser) continue;
-      const wn = winner.team?.shortDisplayName || winner.team?.displayName || "";
-      const ln = loser.team?.shortDisplayName || loser.team?.displayName || "";
+      const wn = winner.team?.displayName || winner.team?.shortDisplayName || "";
+      const ln = loser.team?.displayName || loser.team?.shortDisplayName || "";
       const matched = recordResult(wn, ln, dates[i]);
       mc += matched;
       if (!matched) unmatched.push(wn + "/" + ln);
     }
     log("espn " + dates[i] + " " + events.length + "ev " + completed + "done " + notDone + "live " + mc + "m");
     if (unmatched.length) log("  unmatched: " + unmatched.slice(0,5).join(", "));
-    if (events.length === 0) log("  (empty response - keys: " + Object.keys(data||{}).join(",") + ")");
-  }
-
-  // Process NCAA results (will skip teams already recorded by ESPN)
-  for (let i = 0; i < dates.length; i++) {
-    const games = ncaaResults[i]?.games || [];
-    let mc = 0;
-    for (const g of games) {
-      const gm = g?.game;
-      if (!gm || (gm.gameState || "").toLowerCase() !== "final") continue;
-      const hs = parseInt(gm.home?.score||"0"), as_ = parseInt(gm.away?.score||"0");
-      const wn = hs > as_ ? (gm.home?.names?.short||gm.home?.names?.full) : (gm.away?.names?.short||gm.away?.names?.full);
-      const ln = hs > as_ ? (gm.away?.names?.short||gm.away?.names?.full) : (gm.home?.names?.short||gm.home?.names?.full);
-      mc += recordResult(wn, ln, dates[i]);
-    }
-    log("ncaa " + dates[i] + " " + games.length + "g " + mc + "m");
+    if (events.length === 0) log("  (empty - keys: " + Object.keys(data||{}).join(",") + ")");
   }
 
   log("results=" + JSON.stringify(nr));
@@ -549,10 +511,7 @@ async function fetchScores() {
       cleanResults[date] = {};
       for (const [k,v] of Object.entries(teams)) { if (v) cleanResults[date][fbKey(k)] = v; }
     }
-    try { await db.ref("results").set(cleanResults); } catch(e) { log("FB results err: " + e.message); }
-    const cleanFf = {};
-    for (const [k,v] of Object.entries(nf)) { if (v) cleanFf[fbKey(k)] = v; }
-    try { await db.ref("ff").set(cleanFf); } catch(e) { log("FB ff err: " + e.message); }
+    try { await db.ref("wc26/results").set(cleanResults); } catch(e) { log("FB results err: " + e.message); }
   }
   } catch(e) { log("CRASH: " + e.message + " " + e.stack); }
   state.fetchTime = new Date().toLocaleTimeString();
@@ -560,96 +519,68 @@ async function fetchScores() {
   render();
 }
 
-// ─── Dynamic Round Building ──────────────────────────────────────────────────
-function resolveFF(name) {
-  if (!name || !name.startsWith("$FF:")) return name;
-  return state.ff[name.slice(4)] || "TBD";
+// ─── Slot Resolution & Round Building ────────────────────────────────────────
+function resolveSlot(name) {
+  if (!name || !name.startsWith("$SLOT:")) return name;
+  return state.slots[name.slice(6)] || "TBD";
 }
 
-// Per-date result helpers
-function teamAdvanced(t) { return Object.values(state.results).some(dr => dr[t] === "won"); }
 function teamEliminated(t) { return Object.values(state.results).some(dr => dr[t] === "lost"); }
 
-function winnerOf(pair) {
-  const resolved = pair.map(resolveFF);
-  return resolved.find(t => teamAdvanced(t)) || null;
+// Determine winner of a game given two team names (already resolved, not TBD-prefixed)
+function gameWinner(a, b) {
+  if (a === "TBD" || b === "TBD") return "TBD";
+  if (teamEliminated(a)) return b;
+  if (teamEliminated(b)) return a;
+  return "TBD";
 }
 
 function buildDays() {
+  // Resolve $SLOT: placeholders in R32 games
   const days = DAYS.map(d => ({
     ...d,
     games: d.games.map(g => ({
-      h: { s: g.h.s, n: resolveFF(g.h.n) },
-      l: { s: g.l.s, n: resolveFF(g.l.n) },
+      h: { n: resolveSlot(g.h.n) },
+      l: { n: resolveSlot(g.l.n) },
       t: g.t, r: g.r
     }))
   }));
 
-  // R2 Saturday
-  const si = days.findIndex(d => d.id === "sat-r2");
-  if (si >= 0) days[si].games = R2_SAT.map(p => ({
-    h:{s:null,n:winnerOf(p.a)||"TBD"}, l:{s:null,n:winnerOf(p.b)||"TBD"}, r:p.r, t:""
-  }));
+  // Collect all 16 R32 games (windows 0-2 = 4+6+6)
+  const r32 = [...days[0].games, ...days[1].games, ...days[2].games];
+  function r32W(i) { const g = r32[i]; return g ? gameWinner(g.h.n, g.l.n) : "TBD"; }
 
-  // R2 Sunday
-  const ui = days.findIndex(d => d.id === "sun-r2");
-  if (ui >= 0) days[ui].games = R2_SUN.map(p => ({
-    h:{s:null,n:winnerOf(p.a.map(resolveFF))||"TBD"}, l:{s:null,n:winnerOf(p.b.map(resolveFF))||"TBD"}, r:p.r, t:""
-  }));
+  // Build 8 R16 games: consecutive pairs of R32 winners
+  const r16 = [];
+  for (let i = 0; i < 8; i++) r16.push({ h:{n:r32W(i*2)}, l:{n:r32W(i*2+1)}, t:"", r:"" });
+  const r16i1 = days.findIndex(d => d.id === "r16-w1");
+  const r16i2 = days.findIndex(d => d.id === "r16-w2");
+  if (r16i1 >= 0) days[r16i1].games = r16.slice(0, 4);
+  if (r16i2 >= 0) days[r16i2].games = r16.slice(4, 8);
 
-  // Helper: find the winner of a game between two known teams.
-  // A winner is determined only when one has lost (meaning the game was played).
-  function gameWinner(a, b) {
-    if (a === "TBD" || b === "TBD") return "TBD";
-    if (teamEliminated(a)) return b;
-    if (teamEliminated(b)) return a;
-    return "TBD"; // game not yet played
-  }
+  function r16W(i) { return gameWinner(r16[i]?.h.n || "TBD", r16[i]?.l.n || "TBD"); }
 
-  // R2 winner: first find R1 winners (the R2 participants), then find R2 winner
-  function r2Winner(r2p) {
-    const a = winnerOf(r2p.a) || "TBD";
-    const b = winnerOf(r2p.b) || "TBD";
-    return gameWinner(a, b);
-  }
+  // Build 4 QF games: consecutive pairs of R16 winners
+  const qf = [];
+  for (let i = 0; i < 4; i++) qf.push({ h:{n:r16W(i*2)}, l:{n:r16W(i*2+1)}, t:"", r:"" });
+  const qfi = days.findIndex(d => d.id === "qf");
+  if (qfi >= 0) days[qfi].games = qf;
 
-  // Sweet 16: each game pits two R2 winners
-  function buildRound(dayId, pairings) {
-    const di = days.findIndex(d => d.id === dayId);
-    if (di >= 0) days[di].games = pairings.map(p => ({
-      h:{s:null,n:p.a}, l:{s:null,n:p.b}, r:p.r, t:""
-    }));
-  }
+  function qfW(i) { return gameWinner(qf[i]?.h.n || "TBD", qf[i]?.l.n || "TBD"); }
 
-  const s16ThuResolved = S16_THU.map(p => ({a:r2Winner(p.a),b:r2Winner(p.b),r:p.r}));
-  const s16FriResolved = S16_FRI.map(p => ({a:r2Winner(p.a),b:r2Winner(p.b),r:p.r}));
-  buildRound("thu-s16", s16ThuResolved);
-  buildRound("fri-s16", s16FriResolved);
-
-  // Elite 8: winners of paired S16 games
-  function roundWinner(resolved, i) {
-    return gameWinner(resolved[i]?.a || "TBD", resolved[i]?.b || "TBD");
-  }
-  const e8SatResolved = [
-    {a:roundWinner(s16ThuResolved,0),b:roundWinner(s16ThuResolved,1),r:"South"},
-    {a:roundWinner(s16ThuResolved,2),b:roundWinner(s16ThuResolved,3),r:"West"},
+  // Build 2 SF games
+  const sf = [
+    { h:{n:qfW(0)}, l:{n:qfW(1)}, t:"", r:"" },
+    { h:{n:qfW(2)}, l:{n:qfW(3)}, t:"", r:"" },
   ];
-  const e8SunResolved = [
-    {a:roundWinner(s16FriResolved,0),b:roundWinner(s16FriResolved,1),r:"Midwest"},
-    {a:roundWinner(s16FriResolved,2),b:roundWinner(s16FriResolved,3),r:"East"},
-  ];
-  buildRound("sat-e8", e8SatResolved);
-  buildRound("sun-e8", e8SunResolved);
+  const sfi = days.findIndex(d => d.id === "sf");
+  if (sfi >= 0) days[sfi].games = sf;
 
-  // Final Four: regional champions
-  const ffResolved = [
-    {a:roundWinner(e8SatResolved,0),b:roundWinner(e8SunResolved,0),r:""},  // South vs Midwest
-    {a:roundWinner(e8SatResolved,1),b:roundWinner(e8SunResolved,1),r:""},  // West vs East
-  ];
-  buildRound("sat-ff", ffResolved);
+  function sfW(i) { return gameWinner(sf[i]?.h.n || "TBD", sf[i]?.l.n || "TBD"); }
 
-  // Championship
-  buildRound("mon-ch", [{a:roundWinner(ffResolved,0),b:roundWinner(ffResolved,1),r:""}]);
+  // Build Final
+  const fi = days.findIndex(d => d.id === "final");
+  if (fi >= 0) days[fi].games = [{ h:{n:sfW(0)}, l:{n:sfW(1)}, t:"", r:"" }];
 
   return days;
 }
@@ -670,20 +601,42 @@ function nowMinutesET() {
 }
 function dayRevealed(d) {
   const todayStr = new Date().toISOString().slice(0,10);
-  if (d.date < todayStr) return true;
-  if (d.date > todayStr) return false;
-  // Today: check if first game has tipped off
+  const firstDate = d.dates[0];
+  if (firstDate < todayStr) return true;
+  if (firstDate > todayStr) return false;
   const times = d.games.map(g => g.t).filter(Boolean);
-  if (!times.length) return nowMinutesET() >= 720; // R2+ default: noon ET
+  if (!times.length) return nowMinutesET() >= 720;
   return nowMinutesET() >= Math.min(...times.map(parseTimeET));
 }
 
 function pickResult(t, dayId) {
+  const day = DAYS.find(d => d.id === dayId);
+  if (!day) return null;
   const c = matchTeam(t) || t;
-  const date = DAY_DATE[dayId];
-  return date ? (state.results[date]?.[c] || null) : null;
+  for (const date of day.dates) {
+    const r = state.results[date]?.[c];
+    if (r) return r;
+  }
+  return null;
 }
-function isElim(p) { return Object.entries(state.picks[p]||{}).some(([dayId, t]) => pickResult(t, dayId)==="lost"); }
+
+// Compute eliminations with mass-elimination rule:
+// If ALL players who picked in a round picked losers, no one is eliminated that round.
+function computeEliminations() {
+  const elimMap = new Map();
+  const active = new Set(state.players);
+  for (const day of DAYS) {
+    if (active.size === 0) break;
+    const pickers = [...active].filter(p => state.picks[p]?.[day.id]);
+    if (!pickers.length) continue;
+    const losers = pickers.filter(p => pickResult(state.picks[p][day.id], day.id) === "lost");
+    // Mass elimination: if every picker in this round lost, game continues
+    if (losers.length === pickers.length && losers.length > 0) continue;
+    for (const p of losers) { elimMap.set(p, day.id); active.delete(p); }
+  }
+  return elimMap;
+}
+function isElim(p) { return computeEliminations().has(p); }
 function winCount(p) { return Object.entries(state.picks[p]||{}).filter(([dayId, t]) => pickResult(t, dayId)==="won").length; }
 function esc(s) { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 
@@ -691,7 +644,7 @@ function esc(s) { const d=document.createElement("div"); d.textContent=s; return
 function render() {
   const app = document.getElementById("app");
   if (state.loading) {
-    app.innerHTML = '<div class="login-wrap"><div style="text-align:center"><div style="font-size:48px">\u{1F3C0}</div><div style="font-size:11px;letter-spacing:3px;opacity:0.3;margin-top:12px">LOADING...</div></div></div>';
+    app.innerHTML = '<div class="login-wrap"><div style="text-align:center"><div style="font-size:48px">\u26BD</div><div style="font-size:11px;letter-spacing:3px;opacity:0.3;margin-top:12px">LOADING...</div></div></div>';
     return;
   }
 
@@ -705,9 +658,9 @@ function render() {
     app.innerHTML =
       '<div class="login-wrap">' +
         '<div class="login-card">' +
-          '<div class="login-ball">\u{1F3C0}</div>' +
+          '<div class="login-ball">\u26BD</div>' +
           '<h1 class="login-title">Survivor Pool</h1>' +
-          '<div class="login-sub">March Madness 2026 &middot; v3.1</div>' +
+          '<div class="login-sub">World Cup 2026 &middot; v1.0</div>' +
           '<div class="login-box">' +
             '<div class="login-label">Enter your name to join</div>' +
             '<input class="login-input" id="nameInput" placeholder="Your name..." autofocus>' +
@@ -739,9 +692,9 @@ function render() {
   // Header
   html += '<div class="header">' +
     '<div class="header-left">' +
-      '<span style="font-size:20px">\u{1F3C0}</span>' +
+      '<span style="font-size:20px">\u26BD</span>' +
       '<div>' +
-        '<div class="header-title">SURVIVOR POOL <span style="font-size:8px;opacity:0.3;letter-spacing:1px">v3.1</span></div>' +
+        '<div class="header-title">SURVIVOR POOL <span style="font-size:8px;opacity:0.3;letter-spacing:1px">v1.0</span></div>' +
         '<div class="header-sub">' + esc(state.player) +
           (elim ? ' <span style="color:var(--red)">\u2620\uFE0F OUT</span>' : "") +
           (!elim && w > 0 ? ' <span style="color:var(--green)">\u{1F525}' + w + '</span>' : "") +
@@ -857,7 +810,7 @@ function render() {
           html += '<div class="matchup-card"><div class="matchup-row" style="opacity:0.15"><div class="tbd-slot">TBD</div><div class="vs">VS</div><div class="tbd-slot">TBD</div></div></div>';
           return;
         }
-        const accent = REGION_COLORS[g.r] || "#888";
+        const accent = "#888";
         let meta = "";
         if (g.r || g.t) {
           meta = '<div class="matchup-meta">' + (g.r?'<span class="matchup-region" style="color:' + accent + '">' + g.r.toUpperCase() + '</span>':"<span></span>") + (g.t?'<span class="matchup-time">' + g.t + ' ET</span>':"") + '</div>';
@@ -883,17 +836,23 @@ function teamBtn(name, seed, dayPick, usedTeams, accent, dayId, elim, opponent) 
 
   const picked = dayPick === name;
   const used = usedTeams.includes(name) && !picked;
-  const date = DAY_DATE[dayId];
-  const wonToday = state.results[date]?.[name] === "won";
-  const lostToday = state.results[date]?.[name] === "lost";
+  const day = DAYS.find(d => d.id === dayId);
+  // Check results across all dates in the window
+  let wonToday = false, lostToday = false;
+  if (day) {
+    for (const date of day.dates) {
+      if (state.results[date]?.[name] === "won") wonToday = true;
+      if (state.results[date]?.[name] === "lost") lostToday = true;
+    }
+  }
   const eliminated = teamEliminated(name);
   const lost = lostToday || eliminated;
   const won = wonToday;
   const dis = used || eliminated || (elim && !picked);
 
-  // Only show W/L badge if this specific game is decided on this date
-  const gameDecided = opponent && opponent !== "TBD" &&
-    (state.results[date]?.[opponent] === "lost" || lostToday);
+  // Show W/L badge if game is decided
+  const gameDecided = opponent && opponent !== "TBD" && (eliminated || lostToday ||
+    (day && day.dates.some(dt => state.results[dt]?.[opponent] === "lost")));
 
   let cls = "team-btn";
   if (picked) cls += " picked";
@@ -904,7 +863,6 @@ function teamBtn(name, seed, dayPick, usedTeams, accent, dayId, elim, opponent) 
   let style = "";
   if (picked) style = "border-color:" + accent + ";background:" + accent + "15;color:" + accent + ";";
 
-  const seedHtml = seed ? '<span class="team-seed">' + seed + '</span>' : "";
   const nameClass = lost ? "team-name struck" : "team-name";
   let badge = "";
   if (picked) badge = '<span style="font-size:13px">\u2713</span>';
@@ -912,7 +870,7 @@ function teamBtn(name, seed, dayPick, usedTeams, accent, dayId, elim, opponent) 
   else if (gameDecided && lost) badge = '<span style="font-size:9px">\u2717</span>';
   else if (used) badge = '<span class="team-badge">USED</span>';
 
-  return '<button class="' + cls + '" style="' + style + '" data-pick="' + esc(name) + '" data-day="' + dayId + '">' + seedHtml + '<span class="' + nameClass + '">' + esc(name) + '</span>' + badge + '</button>';
+  return '<button class="' + cls + '" style="' + style + '" data-pick="' + esc(name) + '" data-day="' + dayId + '"><span class="team-name' + (lost?" struck":"") + '">' + esc(name) + '</span>' + badge + '</button>';
 }
 
 function bindEvents(days) {
