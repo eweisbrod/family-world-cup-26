@@ -700,6 +700,13 @@ function standingsRank(a, b) {
   if (sa !== sb) return sa - sb;
   return survivorStreak(b) - survivorStreak(a);
 }
+// Display status for a pick: a forgiven all-miss loss shows as "safe" (neutral,
+// no strike); otherwise the raw won/lost/null result.
+function pickDisplay(t, winId) {
+  const r = pickResult(t, winId);
+  if (r === "lost" && allEliminatedInWindow(winId)) return "safe";
+  return r;
+}
 function esc(s) { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
@@ -724,7 +731,7 @@ function render() {
         '<div class="login-card">' +
           '<div class="login-ball">\u26BD</div>' +
           '<h1 class="login-title">Survivor Pool</h1>' +
-          '<div class="login-sub">World Cup 2026 &middot; v1.4</div>' +
+          '<div class="login-sub">World Cup 2026 &middot; v1.5</div>' +
           '<div class="login-box">' +
             '<div class="login-label">Enter your name to join</div>' +
             '<input class="login-input" id="nameInput" placeholder="Your name..." autofocus>' +
@@ -758,7 +765,7 @@ function render() {
     '<div class="header-left">' +
       '<span style="font-size:20px">\u26BD</span>' +
       '<div>' +
-        '<div class="header-title">SURVIVOR POOL <span style="font-size:8px;opacity:0.3;letter-spacing:1px">v1.4</span></div>' +
+        '<div class="header-title">SURVIVOR POOL <span style="font-size:8px;opacity:0.3;letter-spacing:1px">v1.5</span></div>' +
         '<div class="header-sub">' + esc(state.player) +
           ' <span style="color:' + (strikes ? 'var(--red)' : 'var(--green)') + '">✗ ' + strikes + ' strike' + (strikes === 1 ? '' : 's') + '</span>' +
           (w > 0 ? ' <span style="color:var(--green)">✓ ' + w + '</span>' : "") +
@@ -810,7 +817,7 @@ function render() {
         const t = pp[d.id];
         const show = isMe || revealed[di];
         // Only show won/lost coloring for windows that are fully over (end date < today)
-        const r = (t && show && d.dates[d.dates.length-1] < todayStr) ? pickResult(t, d.id) : null;
+        const r = (t && show && d.dates[d.dates.length-1] < todayStr) ? pickDisplay(t, d.id) : null;
         const bg = r==="won"?"var(--green-dim)":r==="lost"?"var(--red-dim)":"var(--surface)";
         const c = r==="won"?"var(--green)":r==="lost"?"var(--red)":"var(--text-dim)";
         const dec = r==="lost"?"text-decoration:line-through":"";
@@ -827,19 +834,19 @@ function render() {
     html += '<div class="day-scroll">';
     days.forEach((d, i) => {
       const p = myPicks[d.id];
-      const r = p ? pickResult(p, d.id) : null;
+      const r = p ? pickDisplay(p, d.id) : null;
       const act = i === state.dayIdx;
       const hasGames = d.games.some(g => g.h.n !== "TBD" || g.l.n !== "TBD");
       let cls = "day-tab";
       if (act) cls += " active";
       else if (r==="won") cls += " has-won";
       else if (r==="lost") cls += " has-lost";
-      else if (p) cls += " has-pick";
+      else if (p && r !== "safe") cls += " has-pick";
       if (!hasGames && !act) cls += " dim";
       let pickTag = "";
       if (p) {
-        const bg = r==="lost"?"var(--red-dim)":r==="won"?"var(--green-dim)":"var(--yellow-dim)";
-        const c = r==="lost"?"var(--red)":r==="won"?"var(--green)":"var(--yellow)";
+        const bg = r==="lost"?"var(--red-dim)":r==="won"?"var(--green-dim)":r==="safe"?"var(--surface)":"var(--yellow-dim)";
+        const c = r==="lost"?"var(--red)":r==="won"?"var(--green)":r==="safe"?"var(--text-dim)":"var(--yellow)";
         const dec = r==="lost"?"text-decoration:line-through;":"";
         pickTag = '<div class="day-pick-tag" style="background:' + bg + ';color:' + c + ';' + dec + '">' + esc(p) + '</div>';
       }
@@ -856,12 +863,12 @@ function render() {
 
     // Pick banner
     if (dayPick) {
-      const r = pickResult(dayPick, day.id);
-      const bg = r==="lost"?"var(--red-dim)":r==="won"?"var(--green-dim)":"var(--yellow-dim)";
-      const bc = r==="lost"?"rgba(255,82,82,0.15)":r==="won"?"rgba(61,220,132,0.12)":"rgba(255,204,68,0.1)";
-      const c = r==="lost"?"var(--red)":r==="won"?"var(--green)":"var(--yellow)";
+      const r = pickDisplay(dayPick, day.id);
+      const bg = r==="lost"?"var(--red-dim)":r==="won"?"var(--green-dim)":r==="safe"?"var(--surface)":"var(--yellow-dim)";
+      const bc = r==="lost"?"rgba(255,82,82,0.15)":r==="won"?"rgba(61,220,132,0.12)":r==="safe"?"var(--border)":"rgba(255,204,68,0.1)";
+      const c = r==="lost"?"var(--red)":r==="won"?"var(--green)":r==="safe"?"var(--text-dim)":"var(--yellow)";
       const dec = r==="lost"?"text-decoration:line-through;":"";
-      const mark = r==="won"?" \u2713":r==="lost"?" \u2717":"";
+      const mark = r==="won"?" \u2713":r==="lost"?" \u2717":r==="safe"?" \u00b7 safe":"";
       const locked = day && dayRevealed(day);
       const changeBtn = !r && !locked ? '<button class="change-btn" id="changeBtn">CHANGE</button>' : "";
       const lockBadge = !r && locked ? '<span style="font-size:9px;opacity:0.4">\u{1F512} LOCKED</span>' : "";
