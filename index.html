@@ -545,6 +545,16 @@ function buildDays() {
       if (dr[a] === "won" && dr[b] === "lost") return a;
       if (dr[b] === "won" && dr[a] === "lost") return b;
     }
+    // Fallback for degraded data (a win recorded without its paired loss):
+    // if one side is recorded as having won a game and the other was never
+    // recorded winning anything, the recorded winner advanced. This covers the
+    // case where ESPN's name for the LOSING side failed to match matchTeam, so
+    // only the winner got written to results (leaving the loser neither "lost"
+    // nor "eliminated"). Safe against retroactive flips: a team only reaches a
+    // later-round slot by having its win recorded, so at rounds past R32 both
+    // sides are winners and neither branch fires until the game is played.
+    if (teamAdvanced(a) && !teamAdvanced(b)) return a;
+    if (teamAdvanced(b) && !teamAdvanced(a)) return b;
     // Fallback for degraded data (a loss recorded without its paired win):
     // if exactly one side is eliminated, the other advanced.
     const aOut = teamEliminated(a), bOut = teamEliminated(b);
